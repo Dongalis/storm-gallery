@@ -18,10 +18,11 @@ const loadBtn = document.getElementById("load");
 const loadFileEl = document.getElementById("load-file");
 const loadStatusEl = document.getElementById("load-status");
 const editorEl = document.getElementById("editor");
+const specialsEl = document.getElementById("specials");
+const specialStatusEl = document.getElementById("special-status");
 const albumListEl = document.getElementById("albums");
 const albumCountEl = document.getElementById("album-count");
 const addForm = document.getElementById("add-form");
-const addKindEl = document.getElementById("add-kind");
 const addSourceEl = document.getElementById("add-source");
 const addTitleEl = document.getElementById("add-title");
 const addDescriptionEl = document.getElementById("add-description");
@@ -81,17 +82,137 @@ function selectField(labelText, options, value, onInput) {
   return { label, input: select };
 }
 
-function renderAlbums() {
+// The two special albums get their own editor, one row each, so they are never
+// mixed in with the grid albums and can only ever be one of each kind.
+function renderSpecials() {
   const parts = splitAlbums(albums);
-  const counts = [
-    parts.all ? "all photos" : null,
-    parts.upload ? "upload" : null,
-    `${parts.regular.length} in the grid`,
-  ].filter(Boolean);
-  albumCountEl.textContent = counts.join(", ");
 
+  specialsEl.replaceChildren(
+    ...SPECIAL_KINDS.map((kind) => {
+      const album = parts[kind];
+      const item = document.createElement("li");
+      item.className = "record record--special";
+      item.dataset.kind = kind;
+
+      const head = document.createElement("div");
+      head.className = "record__head";
+
+      const toggle = document.createElement("label");
+      toggle.className = "check check--strong";
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.checked = Boolean(album);
+      const name = document.createElement("span");
+      const kindLabel = document.createElement("span");
+      kindLabel.className = "record__kind";
+      kindLabel.textContent = KIND_LABELS[kind];
+      name.append(kindLabel);
+      if (album) {
+        const id = document.createElement("span");
+        id.className = "record__id";
+        id.textContent = album.id;
+        name.append(id);
+      }
+      toggle.append(box, name);
+      head.append(toggle);
+
+      if (album) {
+        const actions = document.createElement("div");
+        actions.className = "record__actions";
+
+        const move = document.createElement("button");
+        move.type = "button";
+        move.className = "btn";
+        move.textContent = "Move to the grid";
+        move.addEventListener("click", () => {
+          delete album.kind;
+          renderAlbums();
+          setStatus(specialStatusEl, `"${album.title}" is now a card in the grid.`, "ok");
+          setStatus(downloadStatusEl, null);
+        });
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "btn btn--danger";
+        remove.textContent = "Remove";
+        remove.addEventListener("click", () => {
+          albums.splice(albums.indexOf(album), 1);
+          renderAlbums();
+          setStatus(specialStatusEl, `Removed the ${KIND_LABELS[kind]} album.`, "ok");
+          setStatus(downloadStatusEl, null);
+        });
+
+        actions.append(move, remove);
+        head.append(actions);
+      }
+
+      item.append(head);
+
+      if (album) {
+        const grid = document.createElement("div");
+        grid.className = "grid";
+
+        // Kept in the DOM and toggled rather than added and removed, so that
+        // typing into the fields never has to re-render the row and steal focus.
+        const note = document.createElement("p");
+        note.className = "record__note record__note--warn";
+        const syncNote = () => {
+          const ready = Boolean(album.token && album.collectionId);
+          note.hidden = ready;
+          note.textContent = ready ? "" : "Needs an Ente link before the database can be encrypted.";
+        };
+        syncNote();
+
+        const fields = [
+          field("Title", album.title, (v) => { album.title = v; }),
+          field("Description", album.description, (v) => { album.description = v || undefined; }),
+          field("Token", album.token, (v) => { album.token = v; syncNote(); }),
+          field("Collection id", album.collectionId, (v) => { album.collectionId = v; syncNote(); }),
+        ];
+        for (const f of fields) {
+          const wrap = document.createElement("div");
+          wrap.append(f.label, f.input);
+          grid.append(wrap);
+        }
+        item.append(grid, note);
+      } else {
+        const empty = document.createElement("p");
+        empty.className = "record__note";
+        empty.textContent = `No ${KIND_LABELS[kind]} album. Tick the box to add one.`;
+        item.append(empty);
+      }
+
+      box.addEventListener("change", () => {
+        if (box.checked) {
+          if (album) return;
+          const created = {
+            id: kind === "all" ? "all-photos" : "upload",
+            title: KIND_LABELS[kind],
+            kind,
+            token: "",
+            collectionId: "",
+          };
+          if (albums.some((existing) => existing.id === created.id)) created.id = `${created.id}-${kind}`;
+          albums.push(created);
+          renderAlbums();
+          setStatus(specialStatusEl, `Added a ${KIND_LABELS[kind]} album. Paste its Ente link into the fields.`, "ok");
+        } else if (album) {
+          albums.splice(albums.indexOf(album), 1);
+          renderAlbums();
+          setStatus(specialStatusEl, `Removed the ${KIND_LABELS[kind]} album.`, "ok");
+        }
+        setStatus(downloadStatusEl, null);
+      });
+
+      return item;
+    }),
+  );
+}
+
+// Only the grid albums, plus the one-way promotion into a header button.
+function renderGrid() {
   albumListEl.replaceChildren(
-    ...albums.map((album, index) => {
+    ...splitAlbums(albums).regular.map((album) => {
       const item = document.createElement("li");
       item.className = "record";
 
@@ -112,7 +233,7 @@ function renderAlbums() {
       remove.className = "btn btn--danger";
       remove.textContent = "Remove";
       remove.addEventListener("click", () => {
-        albums.splice(index, 1);
+        albums.splice(albums.indexOf(album), 1);
         renderAlbums();
         setStatus(downloadStatusEl, null);
       });
@@ -121,15 +242,33 @@ function renderAlbums() {
 
       const grid = document.createElement("div");
       grid.className = "grid";
+
+      // Promotion only. Turning a header button back into a card is done from
+      // the special row, so the two never sit in the same list.
+      const promote = selectField(
+        "Make this the",
+        SPECIAL_KINDS.map((k) => [k, KIND_LABELS[k]]),
+        "",
+        (v) => {
+          if (!v) return;
+          const taken = albums.some((other) => other !== album && other.kind === v);
+          if (taken) {
+            setStatus(specialStatusEl, `The ${KIND_LABELS[v]} button is already set. Remove it above first.`, "error");
+            renderGrid();
+            return;
+          }
+          album.kind = v;
+          renderAlbums();
+          setStatus(specialStatusEl, `"${album.title}" is now the ${KIND_LABELS[v]} button.`, "ok");
+          setStatus(downloadStatusEl, null);
+        },
+      );
+      promote.input.prepend(new Option("Keep it in the grid", ""));
+
       const fields = [
-        selectField(
-          "Placement",
-          [["", "Album in the grid"], ...SPECIAL_KINDS.map((k) => [k, `${KIND_LABELS[k]} — header button`])],
-          album.kind,
-          (v) => { album.kind = v; },
-        ),
+        promote,
         field("Title", album.title, (v) => { album.title = v; id.textContent = album.id; }),
-        field("Description", album.description, (v) => { album.description = v; }),
+        field("Description", album.description, (v) => { album.description = v || undefined; }),
         field("Token", album.token, (v) => { album.token = v; }),
         field("Collection id", album.collectionId, (v) => { album.collectionId = v; }),
       ];
@@ -143,6 +282,18 @@ function renderAlbums() {
       return item;
     }),
   );
+}
+
+function renderAlbums() {
+  const parts = splitAlbums(albums);
+  const counts = [
+    parts.all ? "all photos" : null,
+    parts.upload ? "upload" : null,
+    `${parts.regular.length} in the grid`,
+  ].filter(Boolean);
+  albumCountEl.textContent = counts.join(", ");
+  renderSpecials();
+  renderGrid();
 }
 
 function showEditor(source) {
@@ -235,12 +386,6 @@ addSourceEl.addEventListener("input", () => {
   }
 });
 
-addKindEl.addEventListener("change", () => {
-  // Give the special albums their conventional names unless one was typed.
-  const kind = addKindEl.value;
-  if (kind && addTitleEl.value.trim() === "") addTitleEl.value = KIND_LABELS[kind];
-});
-
 addForm.addEventListener("submit", (event) => {
   event.preventDefault();
   setStatus(addStatusEl, null);
@@ -255,13 +400,11 @@ addForm.addEventListener("submit", (event) => {
     }
   }
 
-  const kind = addKindEl.value || undefined;
-  const title = addTitleEl.value.trim() || (kind ? KIND_LABELS[kind] : "");
+  const title = addTitleEl.value.trim();
   const album = {
     id: suggestId(title),
     title,
     description: addDescriptionEl.value.trim() || undefined,
-    ...(kind ? { kind } : {}),
     ...parsed,
   };
 
@@ -278,13 +421,12 @@ addForm.addEventListener("submit", (event) => {
 
   albums.push(album);
   renderAlbums();
-  addKindEl.value = "";
   addSourceEl.value = "";
   addTitleEl.value = "";
   addDescriptionEl.value = "";
   addTokenEl.value = "";
   addCollectionEl.value = "";
-  setStatus(addStatusEl, `Added "${album.title}".`, "ok");
+  setStatus(addStatusEl, `Added "${album.title}" to the grid.`, "ok");
   setStatus(downloadStatusEl, null);
 });
 

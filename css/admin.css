@@ -218,6 +218,43 @@
   font-weight: 600;
 }
 
+.record--special {
+  border-style: dashed;
+}
+
+.record--special:has(input[type="checkbox"]:checked) {
+  border-style: solid;
+}
+
+.check--strong {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.record__kind {
+  margin-right: 0.5rem;
+}
+
+.record__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.5rem;
+}
+
+.record__note {
+  margin: 0.625rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.record__note--warn {
+  color: #ffcc66;
+}
+
+.subsection {
+  margin-bottom: 1.75rem;
+}
+
 .record__id {
   color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

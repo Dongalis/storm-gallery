@@ -49,10 +49,25 @@
           2. Edit the albums <span id="album-count" class="pill"></span>
         </h2>
 
-        <ul id="albums" class="records"></ul>
+        <section class="subsection" aria-labelledby="specials-heading">
+          <h3 id="specials-heading" class="add__heading">Header buttons</h3>
+          <p class="hint">
+            These two get a button beside <strong>Lock</strong> instead of a card in the
+            grid, and each needs its own Ente public link. There can be only one of each.
+            Unticking removes that album; use <em>Move to the grid</em> to keep it as a card.
+          </p>
+
+          <ul id="specials" class="records"></ul>
+          <p id="special-status" class="status" role="status"></p>
+        </section>
+
+        <section class="subsection" aria-labelledby="grid-heading">
+          <h3 id="grid-heading" class="add__heading">Albums in the grid</h3>
+          <ul id="albums" class="records"></ul>
+        </section>
 
         <form id="add-form" class="add">
-          <h3 class="add__heading">Add an album</h3>
+          <h3 class="add__heading">Add an album to the grid</h3>
 
           <label class="add__label" for="add-source">Ente embed snippet or share link</label>
           <textarea
@@ -62,20 +77,11 @@
             placeholder='&lt;iframe src="https://embed.ente.com/?t=...#..." ...&gt;&lt;/iframe&gt;'
           ></textarea>
           <p class="hint">
-            Paste the whole snippet Ente gives you, or just the link. Both are read.
-            <em>All photos</em> and <em>Upload</em> need their own Ente public link and
-            become buttons in the gallery header; there can be one of each.
+            Paste the whole snippet Ente gives you, or just the link. Both are read. To make
+            an album a header button instead, set <em>Make this the</em> on it after adding.
           </p>
 
           <div class="grid">
-            <div>
-              <label class="add__label" for="add-kind">Placement</label>
-              <select id="add-kind" class="input">
-                <option value="">Album in the grid</option>
-                <option value="all">All photos — button in the header</option>
-                <option value="upload">Upload — button in the header</option>
-              </select>
-            </div>
             <div>
               <label class="add__label" for="add-title">Title</label>
               <input id="add-title" class="input" type="text" placeholder="Iceland 2026" />
