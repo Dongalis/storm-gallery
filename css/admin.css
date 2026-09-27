@@ -156,6 +156,10 @@
   color: #6ee7a8;
 }
 
+.status--warn {
+  color: #ffcc66;
+}
+
 .hint {
   margin: 0.375rem 0 1rem;
   color: var(--muted);

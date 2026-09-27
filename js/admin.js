@@ -155,11 +155,20 @@ function renderSpecials() {
         // Kept in the DOM and toggled rather than added and removed, so that
         // typing into the fields never has to re-render the row and steal focus.
         const note = document.createElement("p");
-        note.className = "record__note record__note--warn";
+        note.className = "record__note";
         const syncNote = () => {
-          const ready = Boolean(album.token && album.collectionId);
-          note.hidden = ready;
-          note.textContent = ready ? "" : "Needs an Ente link before the database can be encrypted.";
+          if (!album.token) {
+            note.className = "record__note record__note--warn";
+            note.textContent = "Needs an Ente link before the database can be encrypted.";
+          } else if (!album.collectionId) {
+            note.className = "record__note record__note--warn";
+            note.textContent =
+              "No collection key. The button may still load; paste the full link if it does not.";
+          } else {
+            note.className = "record__note";
+            note.textContent = "";
+          }
+          note.hidden = note.textContent === "";
         };
         syncNote();
 
@@ -167,7 +176,7 @@ function renderSpecials() {
           field("Title", album.title, (v) => { album.title = v; }),
           field("Description", album.description, (v) => { album.description = v || undefined; }),
           field("Token", album.token, (v) => { album.token = v; syncNote(); }),
-          field("Collection id", album.collectionId, (v) => { album.collectionId = v; syncNote(); }),
+          field("Collection key (optional)", album.collectionId, (v) => { album.collectionId = v; syncNote(); }),
         ];
         for (const f of fields) {
           const wrap = document.createElement("div");
@@ -270,7 +279,7 @@ function renderGrid() {
         field("Title", album.title, (v) => { album.title = v; id.textContent = album.id; }),
         field("Description", album.description, (v) => { album.description = v || undefined; }),
         field("Token", album.token, (v) => { album.token = v; }),
-        field("Collection id", album.collectionId, (v) => { album.collectionId = v; }),
+        field("Collection key (optional)", album.collectionId, (v) => { album.collectionId = v; }),
       ];
       for (const f of fields) {
         const wrap = document.createElement("div");
@@ -380,7 +389,13 @@ addSourceEl.addEventListener("input", () => {
     const { token, collectionId } = parseEnteEmbed(text);
     addTokenEl.value = token;
     addCollectionEl.value = collectionId;
-    setStatus(addStatusEl, "Token and collection id read from the link.", "ok");
+    setStatus(
+      addStatusEl,
+      collectionId
+        ? "Token and collection key read from the link."
+        : "Token read from the link. It carried no collection key (#), so paste the full link if the embed does not load.",
+      collectionId ? "ok" : "warn",
+    );
   } catch {
     setStatus(addStatusEl, null);
   }

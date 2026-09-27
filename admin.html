@@ -69,16 +69,19 @@
         <form id="add-form" class="add">
           <h3 class="add__heading">Add an album to the grid</h3>
 
-          <label class="add__label" for="add-source">Ente embed snippet or share link</label>
+          <label class="add__label" for="add-source">Ente embed snippet or album link</label>
           <textarea
             id="add-source"
             class="input input--area"
             rows="2"
-            placeholder='&lt;iframe src="https://embed.ente.com/?t=...#..." ...&gt;&lt;/iframe&gt;'
+            placeholder='https://albums.ente.com/?t=...#...  or  &lt;iframe src="https://embed.ente.com/?t=...#..." ...&gt;'
           ></textarea>
           <p class="hint">
-            Paste the whole snippet Ente gives you, or just the link. Both are read. To make
-            an album a header button instead, set <em>Make this the</em> on it after adding.
+            Paste the embed snippet Ente gives you, or just the album link. Both are read,
+            and the host does not matter &mdash; <code>albums.ente.com</code>,
+            <code>embed.ente.com</code> and a custom domain all work. A link with only
+            <code>?t=</code> and no <code>#</code> is accepted too. To make an album a header
+            button instead, set <em>Make this the</em> on it after adding.
           </p>
 
           <div class="grid">
@@ -95,7 +98,7 @@
               <input id="add-token" class="input" type="text" placeholder="filled in from the link" />
             </div>
             <div>
-              <label class="add__label" for="add-collection">Collection id</label>
+              <label class="add__label" for="add-collection">Collection key (optional)</label>
               <input id="add-collection" class="input" type="text" placeholder="filled in from the link" />
             </div>
           </div>

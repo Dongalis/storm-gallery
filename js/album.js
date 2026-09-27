@@ -24,12 +24,24 @@ export function splitAlbums(albums) {
 }
 
 export function enteEmbedUrl(album) {
-  return `${ENTE_EMBED_ORIGIN}/?t=${encodeURIComponent(album.token)}#${encodeURIComponent(album.collectionId)}`;
+  const base = `${ENTE_EMBED_ORIGIN}/?t=${encodeURIComponent(album.token)}`;
+  // Ente's public album links carry the collection key as a # fragment, but the
+  // token alone is enough to open the share, so leave the fragment off when we
+  // were never given one.
+  return album.collectionId ? `${base}#${encodeURIComponent(album.collectionId)}` : base;
 }
 
+// Path segments that are app routes rather than an Ente album token. Ente is
+// rolling public album links out as albums.ente.com/TOKEN#KEY, so a lone path
+// segment can be a token, but only if it is not one of these.
+const NON_TOKEN_SEGMENTS = new Set(["s", "share", "p", "photos", "albums", "collections", "admin", "settings"]);
+
 /**
- * Pull the token and collection id out of anything Ente hands you: the copied
- * embed snippet, an embed URL, a public share link, or a bare `?t=..#..`.
+ * Pull the token and collection key out of anything Ente hands you: the copied
+ * embed snippet, an embed URL, a public album link, or a bare `?t=..#..`.
+ *
+ * The host is ignored, so albums.ente.com, embed.ente.com and a custom domain
+ * all work. Returns `collectionId: ""` when the link carries no collection key.
  */
 export function parseEnteEmbed(input) {
   const text = String(input ?? "").trim();
@@ -44,11 +56,21 @@ export function parseEnteEmbed(input) {
     throw new Error(`Could not read a link out of: ${text.slice(0, 60)}`);
   }
 
-  const token = url.searchParams.get("t");
+  const queryToken = url.searchParams.get("t") ?? url.searchParams.get("token");
+  // Newer Ente builds emit albums.ente.com/TOKEN#KEY instead of ?t=TOKEN#KEY.
+  const segments = url.pathname.split("/").filter(Boolean);
+  const pathToken =
+    queryToken || segments.length !== 1 || NON_TOKEN_SEGMENTS.has(segments[0].toLowerCase())
+      ? null
+      : segments[0];
+
+  const token = queryToken ?? pathToken;
   if (!token) throw new Error("No album token (the ?t= part) found in that link.");
 
-  const collectionId = decodeURIComponent(url.hash.replace(/^#/, ""));
-  if (!collectionId) throw new Error("No collection id (the # part) found in that link.");
+  // The collection key arrives as the # fragment, or as ?ck=, which is what
+  // Ente's own embed app reads.
+  const collectionId =
+    decodeURIComponent(url.hash.replace(/^#/, "")) || url.searchParams.get("ck") || "";
 
   return { token, collectionId };
 }
@@ -67,11 +89,16 @@ export function validateAlbum(album, index) {
     throw new Error(`${at}: expected an object.`);
   }
 
-  for (const field of ["id", "title", "token", "collectionId"]) {
+  for (const field of ["id", "title", "token"]) {
     const value = album[field];
     if (typeof value !== "string" || value.trim() === "") {
       throw new Error(`${at}: "${field}" is required and must be a non-empty string.`);
     }
+  }
+
+  // Optional: an albums.ente.com link sometimes arrives with only the token.
+  if (album.collectionId != null && typeof album.collectionId !== "string") {
+    throw new Error(`${at}: "collectionId" must be a string when present.`);
   }
 
   if (album.description != null && typeof album.description !== "string") {
