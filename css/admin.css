@@ -212,6 +212,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /* Lets the id and the buttons stack on a narrow screen; see record__actions. */
+  flex-wrap: wrap;
   gap: 1rem;
   margin-bottom: 0.75rem;
 }
@@ -242,6 +244,10 @@
 .record__actions {
   display: flex;
   flex: 0 0 auto;
+  /* Two buttons plus the record's id do not fit a narrow screen otherwise, and
+     flex will happily push them past the edge of the page. */
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 0.5rem;
 }
 
@@ -269,6 +275,14 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
   gap: 0.875rem;
+}
+
+/* Every album editor has exactly four fields. Left on auto-fit they wrap into
+   three columns at desktop widths and strand the last one on a row of its own,
+   so ask for a wider track here: two columns while there is room, and still one
+   on a narrow screen because the track is capped at the container width. */
+.grid--pair {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
 }
 
 .add {

@@ -63,25 +63,6 @@ function field(labelText, value, onInput) {
   return { label, input };
 }
 
-function selectField(labelText, options, value, onInput) {
-  const label = document.createElement("label");
-  label.className = "add__label";
-  label.textContent = labelText;
-
-  const select = document.createElement("select");
-  select.className = "input";
-  for (const [optionValue, optionText] of options) {
-    const option = document.createElement("option");
-    option.value = optionValue;
-    option.textContent = optionText;
-    select.append(option);
-  }
-  select.value = value ?? "";
-  select.addEventListener("change", () => onInput(select.value || undefined));
-
-  return { label, input: select };
-}
-
 // The two special albums get their own editor, one row each, so they are never
 // mixed in with the grid albums and can only ever be one of each kind.
 function renderSpecials() {
@@ -150,7 +131,7 @@ function renderSpecials() {
 
       if (album) {
         const grid = document.createElement("div");
-        grid.className = "grid";
+        grid.className = "grid grid--pair";
 
         // Kept in the DOM and toggled rather than added and removed, so that
         // typing into the fields never has to re-render the row and steal focus.
@@ -250,32 +231,9 @@ function renderGrid() {
       head.append(name, remove);
 
       const grid = document.createElement("div");
-      grid.className = "grid";
-
-      // Promotion only. Turning a header button back into a card is done from
-      // the special row, so the two never sit in the same list.
-      const promote = selectField(
-        "Make this the",
-        SPECIAL_KINDS.map((k) => [k, KIND_LABELS[k]]),
-        "",
-        (v) => {
-          if (!v) return;
-          const taken = albums.some((other) => other !== album && other.kind === v);
-          if (taken) {
-            setStatus(specialStatusEl, `The ${KIND_LABELS[v]} button is already set. Remove it above first.`, "error");
-            renderGrid();
-            return;
-          }
-          album.kind = v;
-          renderAlbums();
-          setStatus(specialStatusEl, `"${album.title}" is now the ${KIND_LABELS[v]} button.`, "ok");
-          setStatus(downloadStatusEl, null);
-        },
-      );
-      promote.input.prepend(new Option("Keep it in the grid", ""));
+      grid.className = "grid grid--pair";
 
       const fields = [
-        promote,
         field("Title", album.title, (v) => { album.title = v; id.textContent = album.id; }),
         field("Description", album.description, (v) => { album.description = v || undefined; }),
         field("Token", album.token, (v) => { album.token = v; }),
