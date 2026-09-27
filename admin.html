@@ -90,17 +90,35 @@
       <section id="output" class="panel" hidden aria-labelledby="output-heading">
         <h2 id="output-heading" class="panel__heading">3. Re-encrypt and download</h2>
 
-        <label class="row__label" for="new-password">New password</label>
-        <input
-          id="new-password"
-          class="input input--wide"
-          type="password"
-          autocomplete="new-password"
-          placeholder="Type the password the gallery should use"
-        />
-        <div id="password-note" class="hint"></div>
+        <label class="check">
+          <input id="change-password" type="checkbox" />
+          <span>Change the gallery password</span>
+        </label>
+
+        <p id="reuse-note" class="hint">
+          Leave that unchecked and the new file is encrypted with the same password you
+          loaded the database with. Tick it to set a different one.
+        </p>
+
+        <div id="new-password-block" hidden>
+          <label class="row__label" for="new-password">New password</label>
+          <input
+            id="new-password"
+            class="input input--wide"
+            type="password"
+            autocomplete="new-password"
+            placeholder="Type the password the gallery should use"
+          />
+          <p id="password-note" class="hint"></p>
+        </div>
 
         <button id="download" class="btn btn--primary" type="button">Encrypt and download</button>
+
+        <p class="hint hint--tight">
+          Passwords are held in this page's memory only. Nothing is written to cookies,
+          <code>localStorage</code> or <code>sessionStorage</code>, nothing is sent anywhere,
+          and the fields are emptied once they are no longer needed.
+        </p>
 
         <p id="download-status" class="status" role="status"></p>
 

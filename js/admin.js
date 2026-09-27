@@ -21,12 +21,17 @@ const addCollectionEl = document.getElementById("add-collection");
 const addStatusEl = document.getElementById("add-status");
 const addBtn = document.getElementById("add");
 const outputEl = document.getElementById("output");
+const changePasswordEl = document.getElementById("change-password");
+const newPasswordBlockEl = document.getElementById("new-password-block");
+const reuseNoteEl = document.getElementById("reuse-note");
 const newPasswordEl = document.getElementById("new-password");
 const passwordNoteEl = document.getElementById("password-note");
 const downloadBtn = document.getElementById("download");
 const downloadStatusEl = document.getElementById("download-status");
 
 let albums = [];
+// Held in this page's memory for the lifetime of the tab and nowhere else: not
+// in cookies, localStorage, sessionStorage, or the URL.
 let currentPassword = "";
 
 function setStatus(el, message, kind = "") {
@@ -128,6 +133,8 @@ async function openEnvelope(envelope, password) {
 
   currentPassword = password;
   showEditor(`Loaded ${albums.length} album(s) from ${envelope.__origin ?? DATA_URL}.`);
+  // The password stays in memory for re-encrypting, but not in the form field.
+  loadPasswordEl.value = "";
   return true;
 }
 
@@ -157,7 +164,8 @@ loadBtn.addEventListener("click", async () => {
 loadFileEl.addEventListener("change", async () => {
   const file = loadFileEl.files?.[0];
   if (!file) return;
-  if (!currentPassword) {
+  const password = currentPassword || loadPasswordEl.value;
+  if (!password) {
     setStatus(loadStatusEl, "Enter the password for that file first, then choose it again.", "error");
     loadFileEl.value = "";
     return;
@@ -165,7 +173,7 @@ loadFileEl.addEventListener("change", async () => {
   try {
     const envelope = JSON.parse(await file.text());
     envelope.__origin = file.name;
-    await openEnvelope(envelope, loadPasswordEl.value);
+    await openEnvelope(envelope, password);
   } catch (error) {
     setStatus(loadStatusEl, `Could not read that file: ${error.message}`, "error");
   } finally {
@@ -230,6 +238,20 @@ addForm.addEventListener("submit", (event) => {
   setStatus(downloadStatusEl, null);
 });
 
+changePasswordEl.addEventListener("change", () => {
+  const changing = changePasswordEl.checked;
+  newPasswordBlockEl.hidden = !changing;
+  reuseNoteEl.textContent = changing
+    ? "The new file will be encrypted with the password below."
+    : "The new file will be encrypted with the same password you loaded the database with.";
+  if (!changing) {
+    newPasswordEl.value = "";
+    passwordNoteEl.textContent = "";
+    passwordNoteEl.className = "hint";
+  }
+  setStatus(downloadStatusEl, null);
+});
+
 newPasswordEl.addEventListener("input", () => {
   const length = newPasswordEl.value.length;
   if (length === 0) {
@@ -245,14 +267,18 @@ newPasswordEl.addEventListener("input", () => {
 });
 
 downloadBtn.addEventListener("click", async () => {
-  const password = newPasswordEl.value;
+  const changing = changePasswordEl.checked;
+  const password = changing ? newPasswordEl.value : currentPassword;
+
   if (password.length === 0) {
-    setStatus(downloadStatusEl, "Choose the password the gallery should use.", "error");
-    newPasswordEl.focus();
-    return;
-  }
-  if (password === currentPassword) {
-    setStatus(downloadStatusEl, "That is the password already in use. Pick a new one, or keep the current file.", "error");
+    setStatus(
+      downloadStatusEl,
+      changing
+        ? "Choose the password the gallery should use."
+        : "Load a database first, or tick 'Change the gallery password' to set a new one.",
+      "error",
+    );
+    (changing ? newPasswordEl : loadPasswordEl).focus();
     return;
   }
 
@@ -279,9 +305,16 @@ downloadBtn.addEventListener("click", async () => {
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
     setStatus(
       downloadStatusEl,
-      `Downloaded ${OUTPUT_NAME} with ${albums.length} album(s). Commit it to main to publish.`,
+      changing
+        ? `Downloaded ${OUTPUT_NAME} with ${albums.length} album(s) under a new password. Commit it to main to publish.`
+        : `Downloaded ${OUTPUT_NAME} with ${albums.length} album(s), same password as before. Commit it to main to publish.`,
       "ok",
     );
+    // The file on disk is already encrypted; do not leave the password lying
+    // around in the form.
+    newPasswordEl.value = "";
+    passwordNoteEl.textContent = "";
+    passwordNoteEl.className = "hint";
   } catch (error) {
     setStatus(downloadStatusEl, `Could not encrypt: ${error.message}`, "error");
   } finally {
