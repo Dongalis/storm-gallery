@@ -1,0 +1,160 @@
+import { decryptJSON, DecryptionError } from "./crypto.js";
+import { enteEmbedUrl, validateAlbums } from "./album.js";
+
+const DATA_URL = "albums.enc.json";
+
+const lockScreen = document.getElementById("lock");
+const lockForm = document.getElementById("lock-form");
+const passwordInput = document.getElementById("password");
+const errorEl = document.getElementById("lock-error");
+const statusEl = document.getElementById("lock-status");
+const submitEl = lockForm.querySelector(".lock__submit");
+const gallery = document.getElementById("gallery");
+const albumList = document.getElementById("albums");
+const lockAgainEl = document.getElementById("lock-again");
+const viewer = document.getElementById("viewer");
+const viewerTitle = document.getElementById("viewer-title");
+const viewerFrame = document.getElementById("viewer-frame");
+const viewerClose = document.getElementById("viewer-close");
+
+let envelope;
+
+function setError(message) {
+  errorEl.textContent = message ?? "";
+  errorEl.hidden = !message;
+}
+
+function setStatus(message) {
+  statusEl.textContent = message ?? "";
+  statusEl.hidden = !message;
+}
+
+function openViewer(album) {
+  viewerTitle.textContent = album.title;
+  viewerFrame.src = enteEmbedUrl(album);
+  viewer.showModal();
+}
+
+function closeViewer() {
+  // Clear the src first so the embed stops loading immediately rather than
+  // waiting for the dialog's asynchronous close event.
+  viewerFrame.src = "";
+  viewer.close();
+}
+
+function renderAlbums(albums) {
+  albumList.replaceChildren(
+    ...albums.map((album) => {
+      const item = document.createElement("li");
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "album";
+      button.addEventListener("click", () => openViewer(album));
+
+      const title = document.createElement("span");
+      title.className = "album__title";
+      title.textContent = album.title;
+
+      button.append(title);
+
+      if (album.description) {
+        const description = document.createElement("span");
+        description.className = "album__description";
+        description.textContent = album.description;
+        button.append(description);
+      }
+
+      item.append(button);
+      return item;
+    }),
+  );
+}
+
+function showGallery(albums) {
+  renderAlbums(albums);
+  gallery.hidden = false;
+  lockScreen.hidden = true;
+}
+
+function lockGallery() {
+  closeViewer();
+  albumList.replaceChildren();
+  gallery.hidden = true;
+  lockScreen.hidden = false;
+  setError(null);
+  passwordInput.value = "";
+  passwordInput.focus();
+}
+
+async function unlock(password) {
+  const data = await decryptJSON(envelope, password);
+  return validateAlbums(data);
+}
+
+lockForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setError(null);
+
+  const password = passwordInput.value;
+  if (!password) {
+    setError("Enter the gallery password.");
+    return;
+  }
+
+  submitEl.disabled = true;
+  // PBKDF2 is deliberately slow, so give the UI a frame to show the state.
+  setStatus("Checking password…");
+  await new Promise((done) => requestAnimationFrame(() => done()));
+
+  try {
+    showGallery(await unlock(password));
+  } catch (error) {
+    if (error instanceof DecryptionError) {
+      setError("Wrong password. Try again.");
+      passwordInput.select();
+    } else if (error instanceof SyntaxError) {
+      setError("The gallery data decrypted but is not valid JSON.");
+    } else {
+      setError(error.message);
+    }
+  } finally {
+    setStatus(null);
+    submitEl.disabled = false;
+  }
+});
+
+lockAgainEl.addEventListener("click", lockGallery);
+viewerClose.addEventListener("click", closeViewer);
+viewer.addEventListener("click", (event) => {
+  if (event.target === viewer) closeViewer();
+});
+viewer.addEventListener("close", () => {
+  viewerFrame.src = "";
+});
+
+async function boot() {
+  setStatus("Loading gallery data…");
+  try {
+    const response = await fetch(DATA_URL, { cache: "no-store" });
+    if (response.status === 404) {
+      throw new Error("This gallery has not been published yet: its album data is missing from the site.");
+    }
+    if (!response.ok) throw new Error(`Could not load ${DATA_URL} (HTTP ${response.status}).`);
+    envelope = await response.json();
+  } catch (error) {
+    // Reveal the lock screen so the message is actually visible; a failure here
+    // would otherwise leave the visitor on a blank page.
+    lockScreen.hidden = false;
+    setError(error.message);
+    setStatus(null);
+    submitEl.disabled = true;
+    passwordInput.removeAttribute("autofocus");
+    return;
+  }
+  setStatus(null);
+  lockScreen.hidden = false;
+  passwordInput.focus();
+}
+
+boot();

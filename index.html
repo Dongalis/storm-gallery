@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Storm Gallery</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <main id="lock" class="lock" hidden>
+      <form id="lock-form" class="lock__card">
+        <h1 class="lock__title">Storm Gallery</h1>
+        <p class="lock__hint">This gallery is password protected.</p>
+        <label class="lock__label" for="password">Password</label>
+        <input
+          id="password"
+          class="lock__input"
+          type="password"
+          name="password"
+          autocomplete="current-password"
+          required
+          autofocus
+        />
+        <p id="lock-error" class="lock__error" role="alert" hidden></p>
+        <button class="lock__submit" type="submit">Unlock</button>
+        <p id="lock-status" class="lock__status" role="status" hidden></p>
+      </form>
+    </main>
+
+    <div id="gallery" class="gallery" hidden>
+      <header class="gallery__header">
+        <h1 class="gallery__title">Storm Gallery</h1>
+        <button id="lock-again" class="gallery__lock" type="button">Lock</button>
+      </header>
+      <ul id="albums" class="albums"></ul>
+    </div>
+
+    <dialog id="viewer" class="viewer">
+      <div class="viewer__bar">
+        <h2 id="viewer-title" class="viewer__title"></h2>
+        <button id="viewer-close" class="viewer__close" type="button" aria-label="Close album">Close</button>
+      </div>
+      <iframe
+        id="viewer-frame"
+        class="viewer__frame"
+        title="Album"
+        allowfullscreen
+        loading="lazy"
+        referrerpolicy="no-referrer"
+      ></iframe>
+    </dialog>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

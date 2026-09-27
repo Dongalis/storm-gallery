@@ -16,3 +16,9 @@ _site/
 # counterproductive to check this file into the repository.
 # Details at https://github.com/github/pages-gem/issues/768
 Gemfile.lock
+
+# Plaintext album source: holds the raw Ente tokens. Never commit this.
+# Only the encrypted output (albums.enc.json) belongs in git.
+albums.json
+
+node_modules/
