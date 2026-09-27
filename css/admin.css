@@ -1,0 +1,253 @@
+.admin {
+  background: var(--bg);
+}
+
+.admin__bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 0;
+}
+
+.admin__home {
+  color: var(--muted);
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+
+.admin__home:hover {
+  color: var(--text);
+}
+
+.admin__title {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.admin__main {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.admin__lede {
+  margin: 0 0 2rem;
+  max-width: 44rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.panel {
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.panel__heading {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin: 0 0 1.25rem;
+  font-size: 1.05rem;
+}
+
+.pill {
+  padding: 0.1rem 0.5rem;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.875rem;
+}
+
+.row__label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.input {
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding: 0.5rem 0.625rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.input--wide {
+  flex-basis: 100%;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.input--area {
+  flex-basis: 100%;
+  width: 100%;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+}
+
+.btn {
+  flex: 0 0 auto;
+  padding: 0.5rem 1rem;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.btn:hover {
+  border-color: var(--accent);
+}
+
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn--primary:disabled,
+.btn:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.btn--danger {
+  color: var(--danger);
+}
+
+.status {
+  min-height: 1.25rem;
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.status--error {
+  color: var(--danger);
+}
+
+.status--ok {
+  color: #6ee7a8;
+}
+
+.hint {
+  margin: 0.375rem 0 1rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.hint--warn {
+  color: #ffcc66;
+}
+
+.records {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0 2rem;
+  padding: 0;
+  list-style: none;
+}
+
+.record {
+  padding: 1rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.record__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.record__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.record__id {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.875rem;
+}
+
+.add {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.add__heading {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+}
+
+.add__label {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.add .btn {
+  margin-top: 0.5rem;
+}
+
+.callout {
+  margin-top: 1.25rem;
+  padding: 0.875rem 1rem;
+  background: var(--bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.callout strong {
+  color: var(--text);
+}
+
+code {
+  padding: 0.05rem 0.3rem;
+  background: var(--bg);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+}

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Storm Gallery — admin</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/admin.css" />
+  </head>
+  <body class="admin">
+    <header class="admin__bar">
+      <a class="admin__home" href="index.html">&larr; Gallery</a>
+      <h1 class="admin__title">Album database</h1>
+    </header>
+
+    <main class="admin__main">
+      <p class="admin__lede">
+        Runs entirely in this page. Nothing is uploaded anywhere: you decrypt the database
+        here, edit it, and save the replacement file back onto your own machine.
+      </p>
+
+      <section class="panel" aria-labelledby="load-heading">
+        <h2 id="load-heading" class="panel__heading">1. Load the current database</h2>
+
+        <div class="row">
+          <label class="row__label" for="load-password">Password</label>
+          <input
+            id="load-password"
+            class="input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Password of the published database"
+          />
+          <button id="load" class="btn" type="button">Load from site</button>
+        </div>
+
+        <div class="row">
+          <label class="row__label" for="load-file">or a file you downloaded earlier</label>
+          <input id="load-file" class="input" type="file" accept="application/json,.json" />
+        </div>
+
+        <p id="load-status" class="status" role="status"></p>
+      </section>
+
+      <section id="editor" class="panel" hidden aria-labelledby="edit-heading">
+        <h2 id="edit-heading" class="panel__heading">
+          2. Edit the albums <span id="album-count" class="pill"></span>
+        </h2>
+
+        <ul id="albums" class="records"></ul>
+
+        <form id="add-form" class="add">
+          <h3 class="add__heading">Add an album</h3>
+
+          <label class="add__label" for="add-source">Ente embed snippet or share link</label>
+          <textarea
+            id="add-source"
+            class="input input--area"
+            rows="2"
+            placeholder='&lt;iframe src="https://embed.ente.com/?t=...#..." ...&gt;&lt;/iframe&gt;'
+          ></textarea>
+          <p class="hint">Paste the whole snippet Ente gives you, or just the link. Both are read.</p>
+
+          <div class="grid">
+            <div>
+              <label class="add__label" for="add-title">Title</label>
+              <input id="add-title" class="input" type="text" placeholder="Iceland 2026" />
+            </div>
+            <div>
+              <label class="add__label" for="add-description">Description (optional)</label>
+              <input id="add-description" class="input" type="text" placeholder="Ring road, ten days" />
+            </div>
+            <div>
+              <label class="add__label" for="add-token">Token</label>
+              <input id="add-token" class="input" type="text" placeholder="filled in from the link" />
+            </div>
+            <div>
+              <label class="add__label" for="add-collection">Collection id</label>
+              <input id="add-collection" class="input" type="text" placeholder="filled in from the link" />
+            </div>
+          </div>
+
+          <p id="add-status" class="status" role="status"></p>
+          <button id="add" class="btn" type="submit">Add album</button>
+        </form>
+      </section>
+
+      <section id="output" class="panel" hidden aria-labelledby="output-heading">
+        <h2 id="output-heading" class="panel__heading">3. Re-encrypt and download</h2>
+
+        <label class="row__label" for="new-password">New password</label>
+        <input
+          id="new-password"
+          class="input input--wide"
+          type="password"
+          autocomplete="new-password"
+          placeholder="Type the password the gallery should use"
+        />
+        <div id="password-note" class="hint"></div>
+
+        <button id="download" class="btn btn--primary" type="button">Encrypt and download</button>
+
+        <p id="download-status" class="status" role="status"></p>
+
+        <div class="callout">
+          <strong>Then publish it:</strong> replace <code>albums.enc.json</code> in your repository
+          with the file you just downloaded and push to <code>main</code>. The site serves whatever
+          is committed there, so nothing changes until you do.
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="js/admin.js"></script>
+  </body>
+</html>

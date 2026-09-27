@@ -1,0 +1,296 @@
+import { decryptJSON, encryptJSON, DecryptionError } from "./crypto.js";
+import { parseEnteEmbed, suggestId, validateAlbums, enteEmbedUrl } from "./album.js";
+
+const DATA_URL = "albums.enc.json";
+const OUTPUT_NAME = "albums.enc.json";
+const MIN_PASSWORD_LENGTH = 12;
+
+const loadPasswordEl = document.getElementById("load-password");
+const loadBtn = document.getElementById("load");
+const loadFileEl = document.getElementById("load-file");
+const loadStatusEl = document.getElementById("load-status");
+const editorEl = document.getElementById("editor");
+const albumListEl = document.getElementById("albums");
+const albumCountEl = document.getElementById("album-count");
+const addForm = document.getElementById("add-form");
+const addSourceEl = document.getElementById("add-source");
+const addTitleEl = document.getElementById("add-title");
+const addDescriptionEl = document.getElementById("add-description");
+const addTokenEl = document.getElementById("add-token");
+const addCollectionEl = document.getElementById("add-collection");
+const addStatusEl = document.getElementById("add-status");
+const addBtn = document.getElementById("add");
+const outputEl = document.getElementById("output");
+const newPasswordEl = document.getElementById("new-password");
+const passwordNoteEl = document.getElementById("password-note");
+const downloadBtn = document.getElementById("download");
+const downloadStatusEl = document.getElementById("download-status");
+
+let albums = [];
+let currentPassword = "";
+
+function setStatus(el, message, kind = "") {
+  el.textContent = message ?? "";
+  el.className = kind ? `status status--${kind}` : "status";
+}
+
+function field(labelText, value, onInput) {
+  const label = document.createElement("label");
+  label.className = "add__label";
+  label.textContent = labelText;
+
+  const input = document.createElement("input");
+  input.className = "input";
+  input.type = "text";
+  input.value = value ?? "";
+  input.addEventListener("input", () => onInput(input.value));
+
+  return { label, input };
+}
+
+function renderAlbums() {
+  albumCountEl.textContent = `${albums.length} total`;
+  albumListEl.replaceChildren(
+    ...albums.map((album, index) => {
+      const item = document.createElement("li");
+      item.className = "record";
+
+      const head = document.createElement("div");
+      head.className = "record__head";
+
+      const name = document.createElement("div");
+      const title = document.createElement("p");
+      title.className = "record__title";
+      title.textContent = album.title;
+      const id = document.createElement("span");
+      id.className = "record__id";
+      id.textContent = album.id;
+      name.append(title, id);
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "btn btn--danger";
+      remove.textContent = "Remove";
+      remove.addEventListener("click", () => {
+        albums.splice(index, 1);
+        renderAlbums();
+        setStatus(downloadStatusEl, null);
+      });
+
+      head.append(name, remove);
+
+      const grid = document.createElement("div");
+      grid.className = "grid";
+      const fields = [
+        field("Title", album.title, (v) => { album.title = v; id.textContent = album.id; }),
+        field("Description", album.description, (v) => { album.description = v; }),
+        field("Token", album.token, (v) => { album.token = v; }),
+        field("Collection id", album.collectionId, (v) => { album.collectionId = v; }),
+      ];
+      for (const f of fields) {
+        const wrap = document.createElement("div");
+        wrap.append(f.label, f.input);
+        grid.append(wrap);
+      }
+
+      item.append(head, grid);
+      return item;
+    }),
+  );
+}
+
+function showEditor(source) {
+  editorEl.hidden = false;
+  outputEl.hidden = false;
+  setStatus(loadStatusEl, source, "ok");
+  renderAlbums();
+}
+
+async function openEnvelope(envelope, password) {
+  let data;
+  try {
+    data = await decryptJSON(envelope, password);
+  } catch (error) {
+    setStatus(
+      loadStatusEl,
+      error instanceof DecryptionError ? "Wrong password for that database." : error.message,
+      "error",
+    );
+    return false;
+  }
+
+  try {
+    albums = validateAlbums(data).map((album) => ({ ...album }));
+  } catch (error) {
+    setStatus(loadStatusEl, `That file decrypted, but the contents are not usable: ${error.message}`, "error");
+    return false;
+  }
+
+  currentPassword = password;
+  showEditor(`Loaded ${albums.length} album(s) from ${envelope.__origin ?? DATA_URL}.`);
+  return true;
+}
+
+loadBtn.addEventListener("click", async () => {
+  const password = loadPasswordEl.value;
+  if (!password) {
+    setStatus(loadStatusEl, "Enter the password of the current database.", "error");
+    return;
+  }
+
+  loadBtn.disabled = true;
+  setStatus(loadStatusEl, "Downloading and decrypting…");
+  try {
+    const response = await fetch(DATA_URL, { cache: "no-store" });
+    if (response.status === 404) throw new Error("There is no albums.enc.json published on this site yet.");
+    if (!response.ok) throw new Error(`Could not load ${DATA_URL} (HTTP ${response.status}).`);
+    const envelope = await response.json();
+    envelope.__origin = `${DATA_URL} (published)`;
+    await openEnvelope(envelope, password);
+  } catch (error) {
+    setStatus(loadStatusEl, error.message, "error");
+  } finally {
+    loadBtn.disabled = false;
+  }
+});
+
+loadFileEl.addEventListener("change", async () => {
+  const file = loadFileEl.files?.[0];
+  if (!file) return;
+  if (!currentPassword) {
+    setStatus(loadStatusEl, "Enter the password for that file first, then choose it again.", "error");
+    loadFileEl.value = "";
+    return;
+  }
+  try {
+    const envelope = JSON.parse(await file.text());
+    envelope.__origin = file.name;
+    await openEnvelope(envelope, loadPasswordEl.value);
+  } catch (error) {
+    setStatus(loadStatusEl, `Could not read that file: ${error.message}`, "error");
+  } finally {
+    loadFileEl.value = "";
+  }
+});
+
+addSourceEl.addEventListener("input", () => {
+  const text = addSourceEl.value.trim();
+  if (!text) return;
+  try {
+    const { token, collectionId } = parseEnteEmbed(text);
+    addTokenEl.value = token;
+    addCollectionEl.value = collectionId;
+    setStatus(addStatusEl, "Token and collection id read from the link.", "ok");
+  } catch {
+    setStatus(addStatusEl, null);
+  }
+});
+
+addForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  setStatus(addStatusEl, null);
+
+  let parsed = { token: addTokenEl.value.trim(), collectionId: addCollectionEl.value.trim() };
+  if (addSourceEl.value.trim()) {
+    try {
+      parsed = parseEnteEmbed(addSourceEl.value);
+    } catch (error) {
+      setStatus(addStatusEl, error.message, "error");
+      return;
+    }
+  }
+
+  const title = addTitleEl.value.trim();
+  const album = {
+    id: suggestId(title),
+    title,
+    description: addDescriptionEl.value.trim() || undefined,
+    ...parsed,
+  };
+
+  if (album.id && albums.some((existing) => existing.id === album.id)) {
+    album.id = `${album.id}-${albums.length}`;
+  }
+
+  try {
+    validateAlbums({ albums: [...albums, album] });
+  } catch (error) {
+    setStatus(addStatusEl, error.message.replace(/^albums\[\d+\]: /, ""), "error");
+    return;
+  }
+
+  albums.push(album);
+  renderAlbums();
+  addSourceEl.value = "";
+  addTitleEl.value = "";
+  addDescriptionEl.value = "";
+  addTokenEl.value = "";
+  addCollectionEl.value = "";
+  setStatus(addStatusEl, `Added "${album.title}".`, "ok");
+  setStatus(downloadStatusEl, null);
+});
+
+newPasswordEl.addEventListener("input", () => {
+  const length = newPasswordEl.value.length;
+  if (length === 0) {
+    passwordNoteEl.className = "hint";
+    passwordNoteEl.textContent = "This becomes the only way to open the gallery. It cannot be recovered.";
+  } else if (length < MIN_PASSWORD_LENGTH) {
+    passwordNoteEl.className = "hint hint--warn";
+    passwordNoteEl.textContent = `${length} characters. Use at least ${MIN_PASSWORD_LENGTH} — this password can be attacked offline.`;
+  } else {
+    passwordNoteEl.className = "hint";
+    passwordNoteEl.textContent = `${length} characters.`;
+  }
+});
+
+downloadBtn.addEventListener("click", async () => {
+  const password = newPasswordEl.value;
+  if (password.length === 0) {
+    setStatus(downloadStatusEl, "Choose the password the gallery should use.", "error");
+    newPasswordEl.focus();
+    return;
+  }
+  if (password === currentPassword) {
+    setStatus(downloadStatusEl, "That is the password already in use. Pick a new one, or keep the current file.", "error");
+    return;
+  }
+
+  let payload;
+  try {
+    payload = { albums: validateAlbums({ albums }) };
+  } catch (error) {
+    setStatus(downloadStatusEl, `Fix this before encrypting: ${error.message}`, "error");
+    return;
+  }
+
+  downloadBtn.disabled = true;
+  setStatus(downloadStatusEl, "Deriving the key and encrypting. This takes a moment at 600,000 iterations…");
+  await new Promise((done) => requestAnimationFrame(() => done()));
+
+  try {
+    const envelope = await encryptJSON(payload, password);
+    const blob = new Blob([`${JSON.stringify(envelope, null, 2)}\n`], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = OUTPUT_NAME;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    setStatus(
+      downloadStatusEl,
+      `Downloaded ${OUTPUT_NAME} with ${albums.length} album(s). Commit it to main to publish.`,
+      "ok",
+    );
+  } catch (error) {
+    setStatus(downloadStatusEl, `Could not encrypt: ${error.message}`, "error");
+  } finally {
+    downloadBtn.disabled = false;
+  }
+});
+
+// Exposed for the automated checks in tools/.
+globalThis.__stormAdmin = {
+  getAlbums: () => albums,
+  enteEmbedUrl,
+};

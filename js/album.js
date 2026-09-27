@@ -4,6 +4,40 @@ export function enteEmbedUrl(album) {
   return `${ENTE_EMBED_ORIGIN}/?t=${encodeURIComponent(album.token)}#${encodeURIComponent(album.collectionId)}`;
 }
 
+/**
+ * Pull the token and collection id out of anything Ente hands you: the copied
+ * embed snippet, an embed URL, a public share link, or a bare `?t=..#..`.
+ */
+export function parseEnteEmbed(input) {
+  const text = String(input ?? "").trim();
+  if (!text) throw new Error("Paste an Ente embed snippet or share link.");
+
+  const src = text.match(/\bsrc\s*=\s*["']([^"']+)["']/i)?.[1] ?? text;
+
+  let url;
+  try {
+    url = new URL(src, ENTE_EMBED_ORIGIN);
+  } catch {
+    throw new Error(`Could not read a link out of: ${text.slice(0, 60)}`);
+  }
+
+  const token = url.searchParams.get("t");
+  if (!token) throw new Error("No album token (the ?t= part) found in that link.");
+
+  const collectionId = decodeURIComponent(url.hash.replace(/^#/, ""));
+  if (!collectionId) throw new Error("No collection id (the # part) found in that link.");
+
+  return { token, collectionId };
+}
+
+export function suggestId(title) {
+  const slug = String(title ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || `album-${Date.now().toString(36)}`;
+}
+
 export function validateAlbum(album, index) {
   const at = `albums[${index}]`;
   if (!album || typeof album !== "object" || Array.isArray(album)) {
