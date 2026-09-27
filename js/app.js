@@ -41,7 +41,7 @@ function setStatus(message) {
 function openViewer(album) {
   viewerTitle.textContent = album.title;
   viewerEnte.href = enteAlbumUrl(album);
-  viewerEnte.title = `Open ${album.title} in Ente`;
+  viewerEnte.title = `Open ${album.title} in Ente (new tab)`;
   viewerFrame.src = enteEmbedUrl(album);
   viewer.showModal();
 }
@@ -53,14 +53,23 @@ function closeViewer() {
   viewer.close();
 }
 
+// Anything that leaves for Ente opens a new tab, so the gallery is still there
+// when you come back. noopener because _blank otherwise hands the new page a
+// handle on this one; noreferrer because the Ente URL carries the album token
+// and there is no need to advertise which gallery it came from.
+function externalTab(link) {
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  return link;
+}
+
 function enteLink(album, className) {
   const link = document.createElement("a");
   link.className = className;
   link.href = enteAlbumUrl(album);
-  link.rel = "noreferrer";
   link.textContent = "Open in Ente";
-  link.title = `Open ${album.title} in Ente`;
-  return link;
+  link.title = `Open ${album.title} in Ente (new tab)`;
+  return externalTab(link);
 }
 
 function renderSpecial({ all, upload }) {
@@ -72,8 +81,8 @@ function renderSpecial({ all, upload }) {
     // straight to the album rather than another dialog.
     const button = document.createElement(kind === "upload" ? "a" : "button");
     if (kind === "upload") {
-      button.rel = "noreferrer";
       button.href = enteAlbumUrl(album);
+      externalTab(button);
     } else {
       button.type = "button";
       button.addEventListener("click", () => openViewer(album));
