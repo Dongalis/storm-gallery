@@ -1,5 +1,28 @@
 export const ENTE_EMBED_ORIGIN = "https://embed.ente.com";
 
+// Albums that get their own button in the gallery header instead of a grid
+// card. Both are ordinary Ente public links; "all" points at a collection
+// holding everything, "upload" at a public link that accepts uploads.
+export const SPECIAL_KINDS = ["all", "upload"];
+
+export const KIND_LABELS = {
+  all: "All photos",
+  upload: "Upload",
+};
+
+export function isSpecial(album) {
+  return SPECIAL_KINDS.includes(album?.kind);
+}
+
+export function splitAlbums(albums) {
+  const result = { all: null, upload: null, regular: [] };
+  for (const album of albums) {
+    if (album.kind === "all" || album.kind === "upload") result[album.kind] = album;
+    else result.regular.push(album);
+  }
+  return result;
+}
+
 export function enteEmbedUrl(album) {
   return `${ENTE_EMBED_ORIGIN}/?t=${encodeURIComponent(album.token)}#${encodeURIComponent(album.collectionId)}`;
 }
@@ -55,6 +78,10 @@ export function validateAlbum(album, index) {
     throw new Error(`${at}: "description" must be a string when present.`);
   }
 
+  if (album.kind != null && !SPECIAL_KINDS.includes(album.kind)) {
+    throw new Error(`${at}: "kind" must be one of ${SPECIAL_KINDS.join(", ")} when present.`);
+  }
+
   // The token and collection id land in a query string and a fragment, so any
   // whitespace or separator would silently produce a broken embed.
   for (const field of ["token", "collectionId"]) {
@@ -71,10 +98,17 @@ export function validateAlbums(data) {
     throw new Error('Source must be an object with an "albums" array.');
   }
   const seen = new Set();
+  const seenKinds = new Set();
   for (const [index, album] of data.albums.entries()) {
     validateAlbum(album, index);
     if (seen.has(album.id)) throw new Error(`Duplicate album id: "${album.id}".`);
     seen.add(album.id);
+    // There is only one "all photos" and one "upload" destination, so a second
+    // one would silently shadow the first in the header.
+    if (SPECIAL_KINDS.includes(album.kind)) {
+      if (seenKinds.has(album.kind)) throw new Error(`Duplicate special album of kind "${album.kind}".`);
+      seenKinds.add(album.kind);
+    }
   }
   return data.albums;
 }

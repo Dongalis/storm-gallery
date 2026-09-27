@@ -61,9 +61,21 @@
             rows="2"
             placeholder='&lt;iframe src="https://embed.ente.com/?t=...#..." ...&gt;&lt;/iframe&gt;'
           ></textarea>
-          <p class="hint">Paste the whole snippet Ente gives you, or just the link. Both are read.</p>
+          <p class="hint">
+            Paste the whole snippet Ente gives you, or just the link. Both are read.
+            <em>All photos</em> and <em>Upload</em> need their own Ente public link and
+            become buttons in the gallery header; there can be one of each.
+          </p>
 
           <div class="grid">
+            <div>
+              <label class="add__label" for="add-kind">Placement</label>
+              <select id="add-kind" class="input">
+                <option value="">Album in the grid</option>
+                <option value="all">All photos — button in the header</option>
+                <option value="upload">Upload — button in the header</option>
+              </select>
+            </div>
             <div>
               <label class="add__label" for="add-title">Title</label>
               <input id="add-title" class="input" type="text" placeholder="Iceland 2026" />

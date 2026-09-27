@@ -1,5 +1,13 @@
 import { decryptJSON, encryptJSON, DecryptionError } from "./crypto.js";
-import { parseEnteEmbed, suggestId, validateAlbums, enteEmbedUrl } from "./album.js";
+import {
+  parseEnteEmbed,
+  suggestId,
+  validateAlbums,
+  enteEmbedUrl,
+  splitAlbums,
+  SPECIAL_KINDS,
+  KIND_LABELS,
+} from "./album.js";
 
 const DATA_URL = "albums.enc.json";
 const OUTPUT_NAME = "albums.enc.json";
@@ -13,6 +21,7 @@ const editorEl = document.getElementById("editor");
 const albumListEl = document.getElementById("albums");
 const albumCountEl = document.getElementById("album-count");
 const addForm = document.getElementById("add-form");
+const addKindEl = document.getElementById("add-kind");
 const addSourceEl = document.getElementById("add-source");
 const addTitleEl = document.getElementById("add-title");
 const addDescriptionEl = document.getElementById("add-description");
@@ -53,8 +62,34 @@ function field(labelText, value, onInput) {
   return { label, input };
 }
 
+function selectField(labelText, options, value, onInput) {
+  const label = document.createElement("label");
+  label.className = "add__label";
+  label.textContent = labelText;
+
+  const select = document.createElement("select");
+  select.className = "input";
+  for (const [optionValue, optionText] of options) {
+    const option = document.createElement("option");
+    option.value = optionValue;
+    option.textContent = optionText;
+    select.append(option);
+  }
+  select.value = value ?? "";
+  select.addEventListener("change", () => onInput(select.value || undefined));
+
+  return { label, input: select };
+}
+
 function renderAlbums() {
-  albumCountEl.textContent = `${albums.length} total`;
+  const parts = splitAlbums(albums);
+  const counts = [
+    parts.all ? "all photos" : null,
+    parts.upload ? "upload" : null,
+    `${parts.regular.length} in the grid`,
+  ].filter(Boolean);
+  albumCountEl.textContent = counts.join(", ");
+
   albumListEl.replaceChildren(
     ...albums.map((album, index) => {
       const item = document.createElement("li");
@@ -87,6 +122,12 @@ function renderAlbums() {
       const grid = document.createElement("div");
       grid.className = "grid";
       const fields = [
+        selectField(
+          "Placement",
+          [["", "Album in the grid"], ...SPECIAL_KINDS.map((k) => [k, `${KIND_LABELS[k]} — header button`])],
+          album.kind,
+          (v) => { album.kind = v; },
+        ),
         field("Title", album.title, (v) => { album.title = v; id.textContent = album.id; }),
         field("Description", album.description, (v) => { album.description = v; }),
         field("Token", album.token, (v) => { album.token = v; }),
@@ -194,6 +235,12 @@ addSourceEl.addEventListener("input", () => {
   }
 });
 
+addKindEl.addEventListener("change", () => {
+  // Give the special albums their conventional names unless one was typed.
+  const kind = addKindEl.value;
+  if (kind && addTitleEl.value.trim() === "") addTitleEl.value = KIND_LABELS[kind];
+});
+
 addForm.addEventListener("submit", (event) => {
   event.preventDefault();
   setStatus(addStatusEl, null);
@@ -208,11 +255,13 @@ addForm.addEventListener("submit", (event) => {
     }
   }
 
-  const title = addTitleEl.value.trim();
+  const kind = addKindEl.value || undefined;
+  const title = addTitleEl.value.trim() || (kind ? KIND_LABELS[kind] : "");
   const album = {
     id: suggestId(title),
     title,
     description: addDescriptionEl.value.trim() || undefined,
+    ...(kind ? { kind } : {}),
     ...parsed,
   };
 
@@ -229,6 +278,7 @@ addForm.addEventListener("submit", (event) => {
 
   albums.push(album);
   renderAlbums();
+  addKindEl.value = "";
   addSourceEl.value = "";
   addTitleEl.value = "";
   addDescriptionEl.value = "";

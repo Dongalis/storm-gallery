@@ -131,6 +131,39 @@ button {
   font-size: 1.75rem;
 }
 
+.gallery__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.special {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.special__button {
+  padding: 0.4rem 0.9rem;
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.special__button:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.special__button--upload {
+  border-style: dashed;
+}
+
 .gallery__lock {
   padding: 0.4rem 0.85rem;
   background: transparent;

@@ -1,5 +1,5 @@
 import { decryptJSON, DecryptionError } from "./crypto.js";
-import { enteEmbedUrl, validateAlbums } from "./album.js";
+import { enteEmbedUrl, splitAlbums, SPECIAL_KINDS, KIND_LABELS, validateAlbums } from "./album.js";
 
 const DATA_URL = "albums.enc.json";
 
@@ -11,6 +11,7 @@ const statusEl = document.getElementById("lock-status");
 const submitEl = lockForm.querySelector(".lock__submit");
 const gallery = document.getElementById("gallery");
 const albumList = document.getElementById("albums");
+const special = document.getElementById("special");
 const lockAgainEl = document.getElementById("lock-again");
 const viewer = document.getElementById("viewer");
 const viewerTitle = document.getElementById("viewer-title");
@@ -42,9 +43,29 @@ function closeViewer() {
   viewer.close();
 }
 
+function renderSpecial({ all, upload }) {
+  const buttons = SPECIAL_KINDS.map((kind) => {
+    const album = kind === "all" ? all : upload;
+    if (!album) return null;
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `special__button special__button--${kind}`;
+    button.textContent = KIND_LABELS[kind];
+    if (album.title && album.title !== KIND_LABELS[kind]) button.title = album.title;
+    button.addEventListener("click", () => openViewer(album));
+    return button;
+  }).filter(Boolean);
+
+  special.replaceChildren(...buttons);
+  special.hidden = buttons.length === 0;
+}
+
 function renderAlbums(albums) {
+  const parts = splitAlbums(albums);
+  renderSpecial(parts);
   albumList.replaceChildren(
-    ...albums.map((album) => {
+    ...parts.regular.map((album) => {
       const item = document.createElement("li");
 
       const button = document.createElement("button");
@@ -80,6 +101,8 @@ function showGallery(albums) {
 function lockGallery() {
   closeViewer();
   albumList.replaceChildren();
+  special.replaceChildren();
+  special.hidden = true;
   gallery.hidden = true;
   lockScreen.hidden = false;
   setError(null);
