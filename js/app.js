@@ -1,5 +1,12 @@
 import { decryptJSON, DecryptionError } from "./crypto.js";
-import { enteEmbedUrl, splitAlbums, SPECIAL_KINDS, KIND_LABELS, validateAlbums } from "./album.js";
+import {
+  enteAlbumUrl,
+  enteEmbedUrl,
+  splitAlbums,
+  SPECIAL_KINDS,
+  KIND_LABELS,
+  validateAlbums,
+} from "./album.js";
 
 const DATA_URL = "albums.enc.json";
 
@@ -15,6 +22,7 @@ const special = document.getElementById("special");
 const lockAgainEl = document.getElementById("lock-again");
 const viewer = document.getElementById("viewer");
 const viewerTitle = document.getElementById("viewer-title");
+const viewerEnte = document.getElementById("viewer-ente");
 const viewerFrame = document.getElementById("viewer-frame");
 const viewerClose = document.getElementById("viewer-close");
 
@@ -32,6 +40,8 @@ function setStatus(message) {
 
 function openViewer(album) {
   viewerTitle.textContent = album.title;
+  viewerEnte.href = enteAlbumUrl(album);
+  viewerEnte.title = `Open ${album.title} in Ente`;
   viewerFrame.src = enteEmbedUrl(album);
   viewer.showModal();
 }
@@ -43,17 +53,34 @@ function closeViewer() {
   viewer.close();
 }
 
+function enteLink(album, className) {
+  const link = document.createElement("a");
+  link.className = className;
+  link.href = enteAlbumUrl(album);
+  link.rel = "noreferrer";
+  link.textContent = "Open in Ente";
+  link.title = `Open ${album.title} in Ente`;
+  return link;
+}
+
 function renderSpecial({ all, upload }) {
   const buttons = SPECIAL_KINDS.map((kind) => {
     const album = kind === "all" ? all : upload;
     if (!album) return null;
 
-    const button = document.createElement("button");
-    button.type = "button";
+    // Uploading is not something the embed can do, so that button is a link
+    // straight to the album rather than another dialog.
+    const button = document.createElement(kind === "upload" ? "a" : "button");
+    if (kind === "upload") {
+      button.rel = "noreferrer";
+      button.href = enteAlbumUrl(album);
+    } else {
+      button.type = "button";
+      button.addEventListener("click", () => openViewer(album));
+    }
     button.className = `special__button special__button--${kind}`;
     button.textContent = KIND_LABELS[kind];
     if (album.title && album.title !== KIND_LABELS[kind]) button.title = album.title;
-    button.addEventListener("click", () => openViewer(album));
     return button;
   }).filter(Boolean);
 
@@ -67,6 +94,7 @@ function renderAlbums(albums) {
   albumList.replaceChildren(
     ...parts.regular.map((album) => {
       const item = document.createElement("li");
+      item.className = "album-card";
 
       const button = document.createElement("button");
       button.type = "button";
@@ -86,7 +114,9 @@ function renderAlbums(albums) {
         button.append(description);
       }
 
-      item.append(button);
+      // A button cannot contain a link, so the card is the list item and the
+      // embed and the Ente link are siblings inside it.
+      item.append(button, enteLink(album, "album__ente"));
       return item;
     }),
   );

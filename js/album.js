@@ -1,5 +1,9 @@
 export const ENTE_EMBED_ORIGIN = "https://embed.ente.com";
 
+// The human-facing album app. A public link looks like albums.ente.com/?t=..#..,
+// which is where "Open in Ente" sends people and where the upload button goes.
+export const ENTE_ALBUM_ORIGIN = "https://albums.ente.com";
+
 // Albums that get their own button in the gallery header instead of a grid
 // card. Both are ordinary Ente public links; "all" points at a collection
 // holding everything, "upload" at a public link that accepts uploads.
@@ -28,6 +32,11 @@ export function enteEmbedUrl(album) {
   // Ente's public album links carry the collection key as a # fragment, but the
   // token alone is enough to open the share, so leave the fragment off when we
   // were never given one.
+  return album.collectionId ? `${base}#${encodeURIComponent(album.collectionId)}` : base;
+}
+
+export function enteAlbumUrl(album) {
+  const base = `${ENTE_ALBUM_ORIGIN}/?t=${encodeURIComponent(album.token)}`;
   return album.collectionId ? `${base}#${encodeURIComponent(album.collectionId)}` : base;
 }
 

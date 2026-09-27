@@ -43,7 +43,10 @@
     <dialog id="viewer" class="viewer">
       <div class="viewer__bar">
         <h2 id="viewer-title" class="viewer__title"></h2>
-        <button id="viewer-close" class="viewer__close" type="button" aria-label="Close album">Close</button>
+        <div class="viewer__actions">
+          <a id="viewer-ente" class="viewer__ente" href="#" rel="noreferrer">Open in Ente</a>
+          <button id="viewer-close" class="viewer__close" type="button" aria-label="Close album">Close</button>
+        </div>
       </div>
       <iframe
         id="viewer-frame"
