@@ -27,10 +27,17 @@ const viewerTitle = document.getElementById("viewer-title");
 const viewerEnte = document.getElementById("viewer-ente");
 const viewerFrame = document.getElementById("viewer-frame");
 const viewerClose = document.getElementById("viewer-close");
+const viewerTabs = document.getElementById("viewer-tabs");
+const viewerTabPhotos = document.getElementById("viewer-tab-photos");
+const viewerTabSubalbums = document.getElementById("viewer-tab-subalbums");
+const viewerSubalbums = document.getElementById("viewer-subalbums");
+const viewerContent = document.getElementById("viewer-content");
 
 let envelope;
 let albumIndex = null;
 let viewPath = [];
+let currentViewerAlbum = null;
+let childrenByParentMap = new Map();
 
 function setError(message) {
   errorEl.textContent = message ?? "";
@@ -42,11 +49,74 @@ function setStatus(message) {
   statusEl.hidden = !message;
 }
 
+function renderViewerSubalbums(parentAlbum) {
+  viewerSubalbums.replaceChildren();
+  const children = childrenByParentMap.get(parentAlbum.id) || [];
+  if (children.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "album__description";
+    empty.textContent = "No subalbums.";
+    viewerSubalbums.append(empty);
+    return;
+  }
+  const list = document.createElement("ul");
+  list.className = "viewer__subalbums-list";
+  for (const child of children) {
+    const item = document.createElement("li");
+    item.className = "album-card";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "album";
+    btn.addEventListener("click", () => {
+      openViewer(child);
+    });
+    const title = document.createElement("span");
+    title.className = "album__title";
+    title.textContent = child.title;
+    btn.append(title);
+    if (child.description) {
+      const desc = document.createElement("span");
+      desc.className = "album__description";
+      desc.textContent = child.description;
+      btn.append(desc);
+    }
+    item.append(btn, enteLink(child, "album__ente"));
+    list.append(item);
+  }
+  viewerSubalbums.append(list);
+}
+
+function setViewerTab(tab) {
+  if (tab === "subalbums") {
+    viewerTabPhotos.classList.remove("is-active");
+    viewerTabSubalbums.classList.add("is-active");
+    viewerFrame.hidden = true;
+    viewerSubalbums.hidden = false;
+  } else {
+    viewerTabPhotos.classList.add("is-active");
+    viewerTabSubalbums.classList.remove("is-active");
+    viewerFrame.hidden = false;
+    viewerSubalbums.hidden = true;
+  }
+}
+
 function openViewer(album) {
+  currentViewerAlbum = album;
   viewerTitle.textContent = album.title;
   viewerEnte.href = enteAlbumUrl(album);
   viewerEnte.title = `Open ${album.title} in Ente (new tab)`;
   viewerFrame.src = enteEmbedUrl(album);
+  const children = childrenByParentMap.get(album.id) || [];
+  if (viewerTabs) {
+    if (children.length > 0) {
+      viewerTabs.hidden = false;
+      viewerTabSubalbums.textContent = `Subalbums (${children.length})`;
+    } else {
+      viewerTabs.hidden = true;
+    }
+  }
+  renderViewerSubalbums(album);
+  setViewerTab("photos");
   viewer.showModal();
 }
 
@@ -154,6 +224,7 @@ function renderCurrentView() {
   const parts = splitAlbums(albumIndex);
   renderSpecial(parts);
   const { roots, childrenByParent } = groupChildren(parts.regular);
+  childrenByParentMap = childrenByParent;
   const currentLevel = viewPath.length
     ? childrenByParent.get(viewPath[viewPath.length - 1].id)
     : roots;
@@ -256,7 +327,10 @@ lockForm.addEventListener("submit", async (event) => {
   await new Promise((done) => requestAnimationFrame(() => done()));
 
   try {
-    showGallery(await unlock(password));
+    const albums = await unlock(password);
+    const parts = splitAlbums(albums);
+    childrenByParentMap = groupChildren(parts.regular).childrenByParent;
+    showGallery(albums);
   } catch (error) {
     if (error instanceof DecryptionError) {
       setError("Wrong password. Try again.");
@@ -275,7 +349,10 @@ lockForm.addEventListener("submit", async (event) => {
 lockAgainEl.addEventListener("click", lockGallery);
 viewerClose.addEventListener("click", closeViewer);
 viewer.addEventListener("click", (event) => {
-  if (event.target === viewer) closeViewer();
+  if (event.target === viewer)   viewerFrame.src = "";
+  if (viewerSubalbums) viewerSubalbums.replaceChildren();
+  currentViewerAlbum = null;
+  viewer.close();
 });
 viewer.addEventListener("close", () => {
   viewerFrame.src = "";
@@ -306,3 +383,13 @@ async function boot() {
 }
 
 boot();
+
+viewerTabPhotos.addEventListener("click", () => {
+  setViewerTab("photos");
+});
+viewerTabSubalbums.addEventListener("click", () => {
+  if (currentViewerAlbum) {
+    renderViewerSubalbums(currentViewerAlbum);
+  }
+  setViewerTab("subalbums");
+});
