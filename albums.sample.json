@@ -1,0 +1,35 @@
+{
+  "albums": [
+    {
+      "id": "all-photos",
+      "title": "All photos",
+      "kind": "all",
+      "description": "Public link to your full archive",
+      "token": "example-token",
+      "collectionId": "example-collection"
+    },
+    {
+      "id": "upload",
+      "title": "Upload",
+      "kind": "upload",
+      "description": "Send new photos here",
+      "token": "example-token",
+      "collectionId": "example-collection"
+    },
+    {
+      "id": "example-album",
+      "title": "Example album",
+      "description": "Top-level album",
+      "token": "example-token",
+      "collectionId": "example-collection"
+    },
+    {
+      "id": "example-subalbum",
+      "title": "Example subalbum",
+      "description": "Nested under the example album",
+      "token": "example-token",
+      "collectionId": "example-collection",
+      "parent": "example-album"
+    }
+  ]
+}

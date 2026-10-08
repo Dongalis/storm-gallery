@@ -4,6 +4,7 @@ import {
   suggestId,
   validateAlbums,
   enteEmbedUrl,
+  groupChildren,
   splitAlbums,
   SPECIAL_KINDS,
   KIND_LABELS,
@@ -28,6 +29,7 @@ const addTitleEl = document.getElementById("add-title");
 const addDescriptionEl = document.getElementById("add-description");
 const addTokenEl = document.getElementById("add-token");
 const addCollectionEl = document.getElementById("add-collection");
+const addParentEl = document.getElementById("add-parent");
 const addStatusEl = document.getElementById("add-status");
 const addBtn = document.getElementById("add");
 const outputEl = document.getElementById("output");
@@ -199,12 +201,59 @@ function renderSpecials() {
   );
 }
 
+
+function getDescendantIds(targetId, allAlbums) {
+  const descendants = new Set();
+  const toVisit = [targetId];
+  while (toVisit.length > 0) {
+    const current = toVisit.shift();
+    for (const album of allAlbums) {
+      if (album.parent === current && !descendants.has(album.id)) {
+        descendants.add(album.id);
+        toVisit.push(album.id);
+      }
+    }
+  }
+  return descendants;
+}
+
+function parentSelect(excludedIds = new Set()) {
+  const select = document.createElement("select");
+  select.className = "input";
+  const none = document.createElement("option");
+  none.value = "";
+  none.textContent = "— none (top level) —";
+  select.append(none);
+  const { roots, childrenByParent } = groupChildren(albums);
+  const appendOptions = (list, depth) => {
+    for (const album of list) {
+      if (excludedIds.has(album.id)) continue;
+      const option = document.createElement("option");
+      option.value = album.id;
+      const prefix = depth > 0 ? "— ".repeat(depth) + " " : "";
+      option.textContent = `${prefix}${album.title}`;
+      select.append(option);
+      const children = childrenByParent.get(album.id);
+      if (children && children.length > 0) {
+        appendOptions(children, depth + 1);
+      }
+    }
+  };
+  appendOptions(roots, 0);
+  return select;
+}
+
 // Only the grid albums, plus the one-way promotion into a header button.
 function renderGrid() {
-  albumListEl.replaceChildren(
-    ...splitAlbums(albums).regular.map((album) => {
+  albumListEl.replaceChildren();
+  const { roots, childrenByParent } = groupChildren(splitAlbums(albums).regular);
+  const renderList = (list, depth) => {
+    for (const album of list) {
       const item = document.createElement("li");
-      item.className = "record";
+      item.className = depth > 0 ? `record record--nested record--depth-${depth}` : "record";
+      if (depth > 0) {
+        item.style.marginLeft = `${depth * 1.5}rem`;
+      }
 
       const head = document.createElement("div");
       head.className = "record__head";
@@ -223,9 +272,22 @@ function renderGrid() {
       remove.className = "btn btn--danger";
       remove.textContent = "Remove";
       remove.addEventListener("click", () => {
-        albums.splice(albums.indexOf(album), 1);
+        const idx = albums.indexOf(album);
+        if (idx === -1) return;
+        const promoted = [];
+        for (const other of albums) {
+          if (other.parent === album.id) {
+            delete other.parent;
+            promoted.push(other.title);
+          }
+        }
+        albums.splice(idx, 1);
         renderAlbums();
-        setStatus(downloadStatusEl, null);
+        if (promoted.length > 0) {
+          setStatus(downloadStatusEl, `Removed ${album.title}; promoted ${promoted.length} child album${promoted.length === 1 ? "" : "s"} to top level.`);
+        } else {
+          setStatus(downloadStatusEl, null);
+        }
       });
 
       head.append(name, remove);
@@ -245,10 +307,33 @@ function renderGrid() {
         grid.append(wrap);
       }
 
+      const parentLabel = document.createElement("label");
+      parentLabel.className = "add__label";
+      parentLabel.textContent = "Parent album (optional)";
+      const excluded = new Set([album.id, ...getDescendantIds(album.id, albums)]);
+      const parentSel = parentSelect(excluded);
+      parentSel.value = album.parent || "";
+      parentSel.addEventListener("change", () => {
+        if (parentSel.value) {
+          album.parent = parentSel.value;
+        } else {
+          delete album.parent;
+        }
+        renderAlbums();
+      });
+      const parentWrap = document.createElement("div");
+      parentWrap.append(parentLabel, parentSel);
+      grid.append(parentWrap);
+
       item.append(head, grid);
-      return item;
-    }),
-  );
+      albumListEl.append(item);
+      const children = childrenByParent.get(album.id);
+      if (children && children.length > 0) {
+        renderList(children, depth + 1);
+      }
+    }
+  };
+  renderList(roots, 0);
 }
 
 function renderAlbums() {
@@ -380,6 +465,9 @@ addForm.addEventListener("submit", (event) => {
     description: addDescriptionEl.value.trim() || undefined,
     ...parsed,
   };
+  if (addParentEl && addParentEl.value) {
+    album.parent = addParentEl.value;
+  }
 
   if (album.id && albums.some((existing) => existing.id === album.id)) {
     album.id = `${album.id}-${albums.length}`;
@@ -399,6 +487,7 @@ addForm.addEventListener("submit", (event) => {
   addDescriptionEl.value = "";
   addTokenEl.value = "";
   addCollectionEl.value = "";
+  if (addParentEl) addParentEl.value = "";
   setStatus(addStatusEl, `Added "${album.title}" to the grid.`, "ok");
   setStatus(downloadStatusEl, null);
 });

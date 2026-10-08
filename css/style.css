@@ -241,8 +241,23 @@ button {
   text-decoration: none;
 }
 
+.album__subalbums {
+  align-self: flex-start;
+  width: fit-content;
+  padding: 0.25rem 0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--accent);
+  font-size: 0.8125rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
 .album__ente:hover,
-.album__ente:focus-visible {
+.album__ente:focus-visible,
+.album__subalbums:hover,
+.album__subalbums:focus-visible {
   color: var(--accent);
   border-bottom-color: var(--accent);
 }
@@ -323,4 +338,36 @@ button {
   width: 100%;
   height: calc(92vh - 3.4rem);
   border: 0;
+}
+
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.crumbs__item {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.crumbs__item:hover,
+.crumbs__item:focus-visible {
+  color: var(--accent);
+}
+
+.crumbs__separator {
+  opacity: 0.5;
+}
+
+.crumbs__current {
+  color: var(--muted);
 }

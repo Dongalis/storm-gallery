@@ -329,3 +329,19 @@ code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.8125rem;
 }
+
+.record--nested {
+  border-style: dashed;
+}
+
+.record--depth-1 {
+  opacity: 0.98;
+}
+
+.record--depth-2 {
+  opacity: 0.96;
+}
+
+.record--depth-3 {
+  opacity: 0.94;
+}

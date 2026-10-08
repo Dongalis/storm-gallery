@@ -3,6 +3,7 @@ import {
   enteAlbumUrl,
   enteEmbedUrl,
   splitAlbums,
+  groupChildren,
   SPECIAL_KINDS,
   KIND_LABELS,
   validateAlbums,
@@ -18,6 +19,7 @@ const statusEl = document.getElementById("lock-status");
 const submitEl = lockForm.querySelector(".lock__submit");
 const gallery = document.getElementById("gallery");
 const albumList = document.getElementById("albums");
+const crumbsEl = document.getElementById("crumbs");
 const special = document.getElementById("special");
 const lockAgainEl = document.getElementById("lock-again");
 const viewer = document.getElementById("viewer");
@@ -27,6 +29,8 @@ const viewerFrame = document.getElementById("viewer-frame");
 const viewerClose = document.getElementById("viewer-close");
 
 let envelope;
+let albumIndex = null;
+let viewPath = [];
 
 function setError(message) {
   errorEl.textContent = message ?? "";
@@ -97,38 +101,114 @@ function renderSpecial({ all, upload }) {
   special.hidden = buttons.length === 0;
 }
 
-function renderAlbums(albums) {
-  const parts = splitAlbums(albums);
+function renderCrumbs() {
+  crumbsEl.replaceChildren();
+  if (viewPath.length === 0) {
+    crumbsEl.hidden = true;
+    return;
+  }
+  crumbsEl.hidden = false;
+
+  const root = document.createElement("button");
+  root.type = "button";
+  root.className = "crumbs__item";
+  root.textContent = "All albums";
+  root.addEventListener("click", () => {
+    viewPath = [];
+    renderCurrentView();
+  });
+  crumbsEl.append(root);
+
+  for (let i = 0; i < viewPath.length; i++) {
+    const sep = document.createElement("span");
+    sep.className = "crumbs__separator";
+    sep.textContent = " / ";
+    crumbsEl.append(sep);
+
+    if (i === viewPath.length - 1) {
+      const current = document.createElement("span");
+      current.className = "crumbs__current";
+      current.textContent = viewPath[i].title;
+      crumbsEl.append(current);
+    } else {
+      const crumb = document.createElement("button");
+      crumb.type = "button";
+      crumb.className = "crumbs__item";
+      crumb.textContent = viewPath[i].title;
+      crumb.addEventListener("click", () => {
+        viewPath = viewPath.slice(0, i + 1);
+        renderCurrentView();
+      });
+      crumbsEl.append(crumb);
+    }
+  }
+}
+
+function renderCurrentView() {
+  if (!albumIndex) {
+    albumList.replaceChildren();
+    renderCrumbs();
+    special.hidden = true;
+    return;
+  }
+  const parts = splitAlbums(albumIndex);
   renderSpecial(parts);
-  albumList.replaceChildren(
-    ...parts.regular.map((album) => {
-      const item = document.createElement("li");
-      item.className = "album-card";
+  const { roots, childrenByParent } = groupChildren(parts.regular);
+  const currentLevel = viewPath.length
+    ? childrenByParent.get(viewPath[viewPath.length - 1].id)
+    : roots;
+  if (!currentLevel || currentLevel.length === 0) {
+    albumList.replaceChildren();
+  } else {
+    albumList.replaceChildren(
+      ...currentLevel.map((album) => {
+        const item = document.createElement("li");
+        item.className = "album-card";
 
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "album";
-      button.addEventListener("click", () => openViewer(album));
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "album";
+        button.addEventListener("click", () => openViewer(album));
 
-      const title = document.createElement("span");
-      title.className = "album__title";
-      title.textContent = album.title;
+        const title = document.createElement("span");
+        title.className = "album__title";
+        title.textContent = album.title;
 
-      button.append(title);
+        button.append(title);
 
-      if (album.description) {
-        const description = document.createElement("span");
-        description.className = "album__description";
-        description.textContent = album.description;
-        button.append(description);
-      }
+        if (album.description) {
+          const description = document.createElement("span");
+          description.className = "album__description";
+          description.textContent = album.description;
+          button.append(description);
+        }
 
-      // A button cannot contain a link, so the card is the list item and the
-      // embed and the Ente link are siblings inside it.
-      item.append(button, enteLink(album, "album__ente"));
-      return item;
-    }),
-  );
+        item.append(button, enteLink(album, "album__ente"));
+        const children = childrenByParent.get(album.id);
+        if (children && children.length > 0) {
+          const subBtn = document.createElement("button");
+          subBtn.type = "button";
+          subBtn.className = "album__subalbums";
+          subBtn.textContent = `${children.length} album${children.length === 1 ? "" : "s"}`;
+          subBtn.title = `View albums in ${album.title}`;
+          subBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            viewPath.push(album);
+            renderCurrentView();
+          });
+          item.append(subBtn);
+        }
+        return item;
+      }),
+    );
+  }
+  renderCrumbs();
+}
+
+function renderAlbums(albums) {
+  albumIndex = albums;
+  viewPath = [];
+  renderCurrentView();
 }
 
 function showGallery(albums) {
@@ -140,8 +220,14 @@ function showGallery(albums) {
 function lockGallery() {
   closeViewer();
   albumList.replaceChildren();
+  if (crumbsEl) {
+    crumbsEl.replaceChildren();
+    crumbsEl.hidden = true;
+  }
   special.replaceChildren();
   special.hidden = true;
+  albumIndex = null;
+  viewPath = [];
   gallery.hidden = true;
   lockScreen.hidden = false;
   setError(null);

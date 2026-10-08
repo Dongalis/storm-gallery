@@ -27,6 +27,22 @@ export function splitAlbums(albums) {
   return result;
 }
 
+export function groupChildren(regularAlbums) {
+  const roots = [];
+  const childrenByParent = new Map();
+  for (const album of regularAlbums) {
+    if (album.parent) {
+      if (!childrenByParent.has(album.parent)) {
+        childrenByParent.set(album.parent, []);
+      }
+      childrenByParent.get(album.parent).push(album);
+    } else {
+      roots.push(album);
+    }
+  }
+  return { roots, childrenByParent };
+}
+
 export function enteEmbedUrl(album) {
   const base = `${ENTE_EMBED_ORIGIN}/?t=${encodeURIComponent(album.token)}`;
   // Ente's public album links carry the collection key as a # fragment, but the
@@ -118,6 +134,15 @@ export function validateAlbum(album, index) {
     throw new Error(`${at}: "kind" must be one of ${SPECIAL_KINDS.join(", ")} when present.`);
   }
 
+  if (album.parent != null) {
+    if (typeof album.parent !== "string" || album.parent.trim() === "") {
+      throw new Error(`${at}: "parent" must be a non-empty string when present.`);
+    }
+    if (album.kind != null) {
+      throw new Error(`${at}: special header albums cannot have a parent.`);
+    }
+  }
+
   // The token and collection id land in a query string and a fragment, so any
   // whitespace or separator would silently produce a broken embed.
   for (const field of ["token", "collectionId"]) {
@@ -146,5 +171,50 @@ export function validateAlbums(data) {
       seenKinds.add(album.kind);
     }
   }
+
+  const idMap = new Map();
+  for (const album of data.albums) {
+    idMap.set(album.id, album);
+  }
+  for (const [index, album] of data.albums.entries()) {
+    if (album.parent != null) {
+      const parentId = album.parent;
+      if (!idMap.has(parentId)) {
+        throw new Error(`Album "albums[${index}].id: ${album.id}" parent "${parentId}" does not exist.`);
+      }
+      const parent = idMap.get(parentId);
+      if (parent.kind != null) {
+        throw new Error(`Album "albums[${index}].id: ${album.id}" parent "${parentId}" is a special header album; nest under a grid album.`);
+      }
+    }
+  }
+
+  const inCycle = (startId) => {
+    const visited = new Set();
+    let current = startId;
+    while (current != null) {
+      if (visited.has(current)) {
+        return true;
+      }
+      visited.add(current);
+      const currentAlbum = idMap.get(current);
+      if (!currentAlbum || currentAlbum.parent == null) {
+        break;
+      }
+      current = currentAlbum.parent;
+    }
+    return false;
+  };
+
+  for (const [index, album] of data.albums.entries()) {
+    if (album.parent != null && album.parent === album.id) {
+      throw new Error(`Albums "${album.id}" form a parent cycle.`);
+    }
+    if (album.parent != null && inCycle(album.parent)) {
+      const cycleStart = album.parent;
+      throw new Error(`Albums "${album.id}" and "${cycleStart}" form a parent cycle.`);
+    }
+  }
+
   return data.albums;
 }
