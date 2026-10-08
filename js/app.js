@@ -32,7 +32,8 @@ const viewerTabs = document.getElementById("viewer-tabs");
 let envelope;
 let albumIndex = null;
 let viewPath = [];
-let activeViewerAlbum = null;
+let viewerRootAlbum = null;
+let viewerEmbedAlbum = null;
 let childrenByParentMap = new Map();
 
 function setError(message) {
@@ -48,31 +49,31 @@ function setStatus(message) {
 function renderViewerTabs() {
   if (!viewerTabs) return;
   viewerTabs.replaceChildren();
-  if (!activeViewerAlbum) {
+  if (!viewerRootAlbum) {
     viewerTabs.hidden = true;
     return;
   }
-  const children = childrenByParentMap.get(activeViewerAlbum.id) || [];
-  viewerTabs.hidden = children.length === 0;
+  const children = childrenByParentMap.get(viewerRootAlbum.id) || [];
+  viewerTabs.hidden = false;
   const seeAll = document.createElement("button");
   seeAll.type = "button";
-  seeAll.className = "viewer__tab is-active";
+  seeAll.className = viewerEmbedAlbum === viewerRootAlbum ? "viewer__tab is-active" : "viewer__tab";
   seeAll.textContent = "See all";
   seeAll.addEventListener("click", () => {
-    activeViewerAlbum = activeViewerAlbum; // keep
-    viewerFrame.src = enteEmbedUrl(activeViewerAlbum);
-    viewerTitle.textContent = activeViewerAlbum.title;
-    viewerEnte.href = enteAlbumUrl(activeViewerAlbum);
+    viewerEmbedAlbum = viewerRootAlbum;
+    viewerFrame.src = enteEmbedUrl(viewerEmbedAlbum);
+    viewerTitle.textContent = viewerEmbedAlbum.title;
+    viewerEnte.href = enteAlbumUrl(viewerEmbedAlbum);
     renderViewerTabs();
   });
   viewerTabs.append(seeAll);
   for (const child of children) {
     const tab = document.createElement("button");
     tab.type = "button";
-    tab.className = "viewer__tab";
+    tab.className = viewerEmbedAlbum === child ? "viewer__tab is-active" : "viewer__tab";
     tab.textContent = child.title;
     tab.addEventListener("click", () => {
-      activeViewerAlbum = child;
+      viewerEmbedAlbum = child;
       viewerFrame.src = enteEmbedUrl(child);
       viewerTitle.textContent = child.title;
       viewerEnte.href = enteAlbumUrl(child);
@@ -83,7 +84,8 @@ function renderViewerTabs() {
 }
 
 function openViewer(album) {
-  activeViewerAlbum = album;
+  viewerRootAlbum = album;
+  viewerEmbedAlbum = album;
   viewerTitle.textContent = album.title;
   viewerEnte.href = enteAlbumUrl(album);
   viewerEnte.title = `Open ${album.title} in Ente (new tab)`;
@@ -94,7 +96,8 @@ function openViewer(album) {
 
 function closeViewer() {
   viewerFrame.src = "";
-  activeViewerAlbum = null;
+  viewerRootAlbum = null;
+  viewerEmbedAlbum = null;
   if (viewerTabs) {
     viewerTabs.replaceChildren();
     viewerTabs.hidden = true;
