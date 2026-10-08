@@ -28,15 +28,11 @@ const viewerEnte = document.getElementById("viewer-ente");
 const viewerFrame = document.getElementById("viewer-frame");
 const viewerClose = document.getElementById("viewer-close");
 const viewerTabs = document.getElementById("viewer-tabs");
-const viewerTabPhotos = document.getElementById("viewer-tab-photos");
-const viewerTabSubalbums = document.getElementById("viewer-tab-subalbums");
-const viewerSubalbums = document.getElementById("viewer-subalbums");
-const viewerContent = document.getElementById("viewer-content");
 
 let envelope;
 let albumIndex = null;
 let viewPath = [];
-let currentViewerAlbum = null;
+let activeViewerAlbum = null;
 let childrenByParentMap = new Map();
 
 function setError(message) {
@@ -49,81 +45,60 @@ function setStatus(message) {
   statusEl.hidden = !message;
 }
 
-function renderViewerSubalbums(parentAlbum) {
-  viewerSubalbums.replaceChildren();
-  const children = childrenByParentMap.get(parentAlbum.id) || [];
-  if (children.length === 0) {
-    const empty = document.createElement("p");
-    empty.className = "album__description";
-    empty.textContent = "No subalbums.";
-    viewerSubalbums.append(empty);
+function renderViewerTabs() {
+  if (!viewerTabs) return;
+  viewerTabs.replaceChildren();
+  if (!activeViewerAlbum) {
+    viewerTabs.hidden = true;
     return;
   }
-  const list = document.createElement("ul");
-  list.className = "viewer__subalbums-list";
+  const children = childrenByParentMap.get(activeViewerAlbum.id) || [];
+  viewerTabs.hidden = children.length === 0;
+  const seeAll = document.createElement("button");
+  seeAll.type = "button";
+  seeAll.className = "viewer__tab is-active";
+  seeAll.textContent = "See all";
+  seeAll.addEventListener("click", () => {
+    activeViewerAlbum = activeViewerAlbum; // keep
+    viewerFrame.src = enteEmbedUrl(activeViewerAlbum);
+    viewerTitle.textContent = activeViewerAlbum.title;
+    viewerEnte.href = enteAlbumUrl(activeViewerAlbum);
+    renderViewerTabs();
+  });
+  viewerTabs.append(seeAll);
   for (const child of children) {
-    const item = document.createElement("li");
-    item.className = "album-card";
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "album";
-    btn.addEventListener("click", () => {
-      openViewer(child);
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.className = "viewer__tab";
+    tab.textContent = child.title;
+    tab.addEventListener("click", () => {
+      activeViewerAlbum = child;
+      viewerFrame.src = enteEmbedUrl(child);
+      viewerTitle.textContent = child.title;
+      viewerEnte.href = enteAlbumUrl(child);
+      renderViewerTabs();
     });
-    const title = document.createElement("span");
-    title.className = "album__title";
-    title.textContent = child.title;
-    btn.append(title);
-    if (child.description) {
-      const desc = document.createElement("span");
-      desc.className = "album__description";
-      desc.textContent = child.description;
-      btn.append(desc);
-    }
-    item.append(btn, enteLink(child, "album__ente"));
-    list.append(item);
-  }
-  viewerSubalbums.append(list);
-}
-
-function setViewerTab(tab) {
-  if (tab === "subalbums") {
-    viewerTabPhotos.classList.remove("is-active");
-    viewerTabSubalbums.classList.add("is-active");
-    viewerFrame.hidden = true;
-    viewerSubalbums.hidden = false;
-  } else {
-    viewerTabPhotos.classList.add("is-active");
-    viewerTabSubalbums.classList.remove("is-active");
-    viewerFrame.hidden = false;
-    viewerSubalbums.hidden = true;
+    viewerTabs.append(tab);
   }
 }
 
 function openViewer(album) {
-  currentViewerAlbum = album;
+  activeViewerAlbum = album;
   viewerTitle.textContent = album.title;
   viewerEnte.href = enteAlbumUrl(album);
   viewerEnte.title = `Open ${album.title} in Ente (new tab)`;
   viewerFrame.src = enteEmbedUrl(album);
-  const children = childrenByParentMap.get(album.id) || [];
-  if (viewerTabs) {
-    if (children.length > 0) {
-      viewerTabs.hidden = false;
-      viewerTabSubalbums.textContent = `Subalbums (${children.length})`;
-    } else {
-      viewerTabs.hidden = true;
-    }
-  }
-  renderViewerSubalbums(album);
-  setViewerTab("photos");
+  renderViewerTabs();
   viewer.showModal();
 }
 
 function closeViewer() {
-  // Clear the src first so the embed stops loading immediately rather than
-  // waiting for the dialog's asynchronous close event.
   viewerFrame.src = "";
+  activeViewerAlbum = null;
+  if (viewerTabs) {
+    viewerTabs.replaceChildren();
+    viewerTabs.hidden = true;
+  }
   viewer.close();
 }
 
@@ -349,10 +324,7 @@ lockForm.addEventListener("submit", async (event) => {
 lockAgainEl.addEventListener("click", lockGallery);
 viewerClose.addEventListener("click", closeViewer);
 viewer.addEventListener("click", (event) => {
-  if (event.target === viewer)   viewerFrame.src = "";
-  if (viewerSubalbums) viewerSubalbums.replaceChildren();
-  currentViewerAlbum = null;
-  viewer.close();
+  if (event.target === viewer) closeViewer();
 });
 viewer.addEventListener("close", () => {
   viewerFrame.src = "";
@@ -384,12 +356,3 @@ async function boot() {
 
 boot();
 
-viewerTabPhotos.addEventListener("click", () => {
-  setViewerTab("photos");
-});
-viewerTabSubalbums.addEventListener("click", () => {
-  if (currentViewerAlbum) {
-    renderViewerSubalbums(currentViewerAlbum);
-  }
-  setViewerTab("subalbums");
-});
